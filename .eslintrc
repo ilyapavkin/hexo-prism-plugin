@@ -1,0 +1,48 @@
+{
+    "rules": {
+        "indent": [
+            2,
+            4
+        ],
+        "quotes": [
+            2,
+            "single"
+        ],
+        "linebreak-style": [
+            0,
+            "unix"
+        ],
+        "semi": [
+            2,
+            "always"
+        ],
+        "no-console": 0,
+        "prefer-template": 0,
+        "max-len": 0,
+        "comma-dangle": 0,
+        "strict": 0,
+        "global-require": 0,
+        "curly": 1,
+        "arrow-body-style": 1,
+        "no-param-reassign": 1,
+        "no-underscore-dangle": 1,
+        "consistent-return": 1
+
+    },
+    "env": {
+        "node": true,
+        "browser": true,
+        "mocha": true,
+        "es6": true,
+        "jquery": true
+    },
+
+    "parserOptions": {
+        "ecmaVersion": 6,
+        "sourceType": "module"
+    },
+    "ecmaFeatures": {
+        "modules": true
+    },
+    "extends": "airbnb-base"
+}
