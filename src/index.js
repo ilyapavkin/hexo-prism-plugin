@@ -16,8 +16,7 @@ const map = {
 };
 
 const themeRegex = /^prism-(.*).css$/;
-const regex = /<pre><code class="(.*)?">([\s\S]*?)<\/code><\/pre>/igm;
-const captionRegex = /<p><code>(?![\s\S]*<code)(.*?)\s(.*?)\n([\s\S]*)<\/code><\/p>/igm;
+const regex = /<prism data-settings="(.*)?">([\s\S]*?)<\/prism>/igm;
 
 /**
  * Unescape from Marked escape
@@ -76,7 +75,7 @@ if (!hexo.config.prism_plugin) {
 // Plugin settings from config
 const prismThemeName = hexo.config.prism_plugin.theme || 'default';
 const mode = hexo.config.prism_plugin.mode || 'preprocess';
-const line_number = hexo.config.prism_plugin.line_number || false;
+let line_number = hexo.config.prism_plugin.line_number || false;
 const custom_css = hexo.config.prism_plugin.custom_css || null;
 
 const prismTheme = themes.find(theme => theme.name === prismThemeName);
@@ -91,23 +90,24 @@ const prismThemeFilePath = custom_css === null ? prismTheme.path : path.join(hex
  * @return {Object}
  */
 function PrismPlugin(data) {
-    // Patch for caption support
-    if (captionRegex.test(data.content)) {
-        // Attempt to parse the code
-        data.content = data.content.replace(captionRegex, (origin, lang, caption, code) => {
-            if (!lang || !caption || !code) return origin;
-            return `<figcaption>${caption}</figcaption><pre><code class="${lang}">${code}</code></pre>`;
-        });
-    }
+    data.content = data.content.replace(regex, (origin, settings, code) => {
+        const config = JSON.parse(unescape(settings.replace(/&#123;/g, '{')
+            .replace(/&#125;/g, '}')).replace(/&#x2F;/g, '/'));
+        if (!config.lang) {
+            return `<pre><code>${code}</code></pre>`;
+        }
 
-    data.content = data.content.replace(regex, (origin, lang, code) => {
+        if (config.line_number !== undefined) {
+            line_number = config.line_number;
+        }
         const lineNumbers = line_number ? 'line-numbers' : '';
-        const startTag = `<pre class="${lineNumbers} language-${lang}"><code class="language-${lang}">`;
-        const endTag = `</code></pre>`;
-        code = unescape(code);
+        const startTag = `<pre class="${lineNumbers} language-${config.lang}"><code class="language-${config.lang}">`;
+        const endTag = '</code></pre>';
+        code = unescape(code.replace(/&#123;/g, '{')
+            .replace(/&#125;/g, '}'));
         let parsedCode = '';
-        if (Prism.languages[lang]) {
-            parsedCode = Prism.highlight(code, Prism.languages[lang]);
+        if (Prism.languages[config.lang]) {
+            parsedCode = Prism.highlight(code, Prism.languages[config.lang]);
         } else {
             parsedCode = code;
         }
