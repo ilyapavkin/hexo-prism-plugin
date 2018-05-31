@@ -116,7 +116,8 @@ function PrismPlugin(data) {
             const linesNum = match ? match.length + 1 : 1;
             let lines = new Array(linesNum + 1);
             lines = lines.join('<span></span>');
-            const startLine = '<span aria-hidden="true" class="line-numbers-rows">';
+            const countFrom = config.first_line ? ` style="counter-reset: linenumber ${config.first_line - 1};"` : '';
+            const startLine = `<span aria-hidden="true" class="line-numbers-rows"${countFrom}>`;
             const endLine = '</span>';
             parsedCode += startLine + lines + endLine;
         }
