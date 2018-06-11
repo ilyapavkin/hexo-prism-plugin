@@ -101,7 +101,8 @@ function PrismPlugin(data) {
             line_number = config.line_number;
         }
         const lineNumbers = line_number ? 'line-numbers' : '';
-        const startTag = `<pre class="${lineNumbers} language-${config.lang}"><code class="language-${config.lang}">`;
+        const caption = config.caption ? `<figcaption>${config.caption}</figcaption>` : '';
+        const startTag = `<pre class="${lineNumbers} language-${config.lang}">${caption}<code class="language-${config.lang}">`;
         const endTag = '</code></pre>';
         code = unescape(code.replace(/&#123;/g, '{')
             .replace(/&#125;/g, '}'));
