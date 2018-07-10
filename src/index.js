@@ -17,6 +17,7 @@ const map = {
 
 const themeRegex = /^prism-(.*).css$/;
 const regex = /<prism data-settings="(.*)?">([\s\S]*?)<\/prism>/igm;
+const multiRegex = /<multiprism>([\s\S]*?)<\/multiprism>/igm;
 
 /**
  * Unescape from Marked escape
@@ -84,46 +85,88 @@ if (!prismTheme) {
 }
 const prismThemeFileName = prismTheme.filename;
 const prismThemeFilePath = custom_css === null ? prismTheme.path : path.join(hexo.base_dir, custom_css);
+
+function refraction(origin, config, code) {
+    if (!config.lang) {
+        return `<pre><code>${code}</code></pre>`;
+    }
+
+    if (config.line_number !== undefined) {
+        line_number = config.line_number;
+    }
+    const startTag = `<code class="language-${config.lang}">`;
+    const endTag = '</code>';
+    code = unescape(code.replace(/&#123;/g, '{')
+        .replace(/&#125;/g, '}'));
+    let parsedCode = '';
+    if (Prism.languages[config.lang]) {
+        parsedCode = Prism.highlight(code, Prism.languages[config.lang]);
+    } else {
+        parsedCode = code;
+    }
+    if (line_number) {
+        const match = parsedCode.match(/\n(?!$)/g);
+        const linesNum = match ? match.length + 1 : 1;
+        let lines = new Array(linesNum + 1);
+        lines = lines.join('<span></span>');
+        const countFrom = config.first_line ? ` style="counter-reset: linenumber ${config.first_line - 1};"` : '';
+        const startLine = `<span aria-hidden="true" class="line-numbers-rows"${countFrom}>`;
+        const endLine = '</span>';
+        parsedCode += startLine + lines + endLine;
+    }
+    return startTag + parsedCode + endTag;
+}
+
+function wrapping(origin, config, content) {
+    if (!config.lang) {
+        return refraction(origin, config, content);
+    }
+
+    const lineNumbers = line_number ? 'line-numbers' : '';
+    const caption = config.caption ? `<figcaption>${config.caption}</figcaption>` : '';
+    const startTag = config.multi ? caption : `<pre class="${lineNumbers} language-${config.lang}">${caption}`;
+    const endTag = config.multi ? '' : '</pre>';
+    return startTag + refraction(origin, config, content) + endTag;
+}
+
+function reprism(content) {
+    return content.replace(regex, (origin, settings, c) => {
+        const config = JSON.parse(unescape(settings.replace(/&#123;/g, '{')
+            .replace(/&#125;/g, '}')).replace(/&#x2F;/g, '/'));
+        return wrapping(origin, config, c);
+    });
+}
+
+function multiwrapping(content) {
+    let flag = false;
+    const lineNumbers = line_number ? 'line-numbers' : '';
+    let ln = '';
+    return content.replace(multiRegex, (o, src) => {
+        const res = src.replace(regex, (origin, settings, c) => {
+            const config = JSON.parse(unescape(settings.replace(/&#123;/g, '{')
+                .replace(/&#125;/g, '}')).replace(/&#x2F;/g, '/'));
+            config.multi = true;
+            if (!flag) {
+                flag = true;
+                ln = config.lang;
+            }
+            return wrapping(origin, config, c);
+        });
+        const startTag = `<pre class="${lineNumbers} language-${ln}">`;
+        const endTag = '</pre>';
+
+        return startTag + res + endTag;
+    });
+}
+
 /**
  * Code transform for prism plugin.
  * @param {Object} data
  * @return {Object}
  */
 function PrismPlugin(data) {
-    data.content = data.content.replace(regex, (origin, settings, code) => {
-        const config = JSON.parse(unescape(settings.replace(/&#123;/g, '{')
-            .replace(/&#125;/g, '}')).replace(/&#x2F;/g, '/'));
-        if (!config.lang) {
-            return `<pre><code>${code}</code></pre>`;
-        }
-
-        if (config.line_number !== undefined) {
-            line_number = config.line_number;
-        }
-        const lineNumbers = line_number ? 'line-numbers' : '';
-        const caption = config.caption ? `<figcaption>${config.caption}</figcaption>` : '';
-        const startTag = `<pre class="${lineNumbers} language-${config.lang}">${caption}<code class="language-${config.lang}">`;
-        const endTag = '</code></pre>';
-        code = unescape(code.replace(/&#123;/g, '{')
-            .replace(/&#125;/g, '}'));
-        let parsedCode = '';
-        if (Prism.languages[config.lang]) {
-            parsedCode = Prism.highlight(code, Prism.languages[config.lang]);
-        } else {
-            parsedCode = code;
-        }
-        if (line_number) {
-            const match = parsedCode.match(/\n(?!$)/g);
-            const linesNum = match ? match.length + 1 : 1;
-            let lines = new Array(linesNum + 1);
-            lines = lines.join('<span></span>');
-            const countFrom = config.first_line ? ` style="counter-reset: linenumber ${config.first_line - 1};"` : '';
-            const startLine = `<span aria-hidden="true" class="line-numbers-rows"${countFrom}>`;
-            const endLine = '</span>';
-            parsedCode += startLine + lines + endLine;
-        }
-        return startTag + parsedCode + endTag;
-    });
+    data.content = multiwrapping(data.content);
+    data.content = reprism(data.content);
     return data;
 }
 
